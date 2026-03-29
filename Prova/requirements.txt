@@ -1,0 +1,27 @@
+# Prova — Python backend dependencies
+# Install: pip install -r requirements.txt
+
+# Core framework
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+
+# Math engine (Prova is built on top of this)
+cobound-validator>=0.1.0
+
+# AI extraction layer
+anthropic>=0.25.0
+
+# Database
+supabase>=2.4.0
+
+# PDF generation
+reportlab>=4.1.0
+
+# Validation
+pydantic>=2.6.0
+
+# Error monitoring
+sentry-sdk[fastapi]>=1.43.0
+
+# YAML parsing (inherited from cobound-validator but explicit here)
+pyyaml>=6.0.0
