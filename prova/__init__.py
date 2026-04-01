@@ -1,4 +1,4 @@
-prova — Formally verified reasoning validator for AI.
+"""prova : Formally verified reasoning validator for AI.
  
 Mathematical foundation: H¹(K;ℤ) = 0 ⟺ argument is structurally valid.
 Backed by 2,400+ formally verified Lean 4 theorems via cobound-validator.
