@@ -7,17 +7,13 @@ Endpoints:
   POST /verify              — analyze a reasoning chain, return certificate
   GET  /certificate/{id}    — retrieve a stored certificate by ID
   GET  /health              — health check with version info
-
-All endpoints are served at api.prova.cobound.dev via Railway.
 """
 
 from __future__ import annotations
 
 import os
-import traceback
 from typing import Any
 
-import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -42,16 +38,20 @@ from prova.extraction.validator import validate_extraction
 from prova.storage.client import store_certificate, get_certificate, log_usage
 
 # ---------------------------------------------------------------------------
-# Sentry (error monitoring) — initialised before app creation
+# Sentry (optional — skip if SENTRY_DSN not set)
 # ---------------------------------------------------------------------------
 
 sentry_dsn = os.environ.get("SENTRY_DSN")
 if sentry_dsn:
-    sentry_sdk.init(
-        dsn=sentry_dsn,
-        environment=os.environ.get("ENVIRONMENT", "production"),
-        traces_sample_rate=0.1,
-    )
+    try:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=sentry_dsn,
+            environment=os.environ.get("ENVIRONMENT", "production"),
+            traces_sample_rate=0.1,
+        )
+    except ImportError:
+        pass
 
 # ---------------------------------------------------------------------------
 # App
@@ -70,7 +70,7 @@ app = FastAPI(
 )
 
 # ---------------------------------------------------------------------------
-# CORS — allow prova.cobound.dev and prova.dev frontends
+# CORS
 # ---------------------------------------------------------------------------
 
 app.add_middleware(
@@ -79,7 +79,7 @@ app.add_middleware(
         "https://prova.cobound.dev",
         "https://prova.dev",
         "https://www.prova.dev",
-        "http://localhost:3000",   # local development
+        "http://localhost:3000",
         "http://localhost:3001",
     ],
     allow_credentials=True,
@@ -88,11 +88,10 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------------------------
-# Supabase client (module-level — reused across requests)
+# Supabase client
 # ---------------------------------------------------------------------------
 
 def _get_supabase() -> Client:
-    """Create and return a Supabase client using service role key."""
     url = os.environ["SUPABASE_URL"]
     key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     return create_client(url, key)
@@ -104,7 +103,6 @@ def _get_supabase() -> Client:
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
 async def health() -> HealthResponse:
-    """Health check. Returns current Prova and validator versions."""
     return HealthResponse(
         status="ok",
         version=PROVA_VERSION,
@@ -127,51 +125,39 @@ async def health() -> HealthResponse:
     tags=["verification"],
 )
 async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
-    """Analyze a reasoning chain and return a formal validity certificate.
-
-    Accepts any AI chain-of-thought reasoning output and returns either:
-    - A VALID certificate confirming logical structural soundness, or
-    - An INVALID certificate with precise failure diagnosis.
-
-    This certificate verifies logical structure only. It does not verify
-    factual accuracy, ethical appropriateness, or fitness for purpose.
-    """
+    """Analyze a reasoning chain and return a formal validity certificate."""
     supabase = _get_supabase()
 
-    # ── Auth + rate limiting ───────────────────────────────────────────
     auth_ctx = await resolve_auth(request, supabase)
 
-    # ── Step 1: Extract argument graph ────────────────────────────────
+    # Step 1: Extract argument graph
     try:
         extraction = extract_argument_graph(
             reasoning=body.reasoning,
             format_hint=body.format,
         )
     except ValueError as exc:
-        # Input validation failures (too short, etc.)
         raise no_structure_detected() from exc
     except ExtractionError as exc:
         raise extraction_failed(str(exc)) from exc
     except Exception as exc:
-        if sentry_dsn:
-            sentry_sdk.capture_exception(exc)
+        _capture(exc)
         raise internal_error(str(exc)) from exc
 
-    # ── Step 2: Confidence gate ───────────────────────────────────────
+    # Step 2: Confidence gate
     passes, score, reason = validate_extraction(extraction)
-
     if not passes:
         if not extraction.get("extractable", True):
             raise no_structure_detected()
         raise extraction_ambiguous(score)
 
-    # ── Step 3: Build AgentNetwork ────────────────────────────────────
+    # Step 3: Build AgentNetwork
     try:
         network, graph_metadata = build_network(extraction)
     except ValueError as exc:
         raise extraction_failed(str(exc)) from exc
 
-    # ── Step 4: Run cobound-validator analysis ────────────────────────
+    # Step 4: Run analysis
     try:
         result = analyze(
             network=network,
@@ -179,14 +165,13 @@ async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
             domain=body.metadata.get("domain") if body.metadata else None,
         )
     except Exception as exc:
-        if sentry_dsn:
-            sentry_sdk.capture_exception(exc)
+        _capture(exc)
         raise analysis_failed(str(exc)) from exc
 
-    # ── Step 5: Build argument graph JSON for certificate ─────────────
+    # Step 5: Build argument graph JSON
     argument_graph = network_to_graph_json(network, graph_metadata)
 
-    # ── Step 6: Generate certificate ─────────────────────────────────
+    # Step 6: Generate certificate
     certificate = generate_certificate(
         reasoning=body.reasoning,
         extraction=extraction,
@@ -197,7 +182,7 @@ async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
         metadata=body.metadata,
     )
 
-    # ── Step 7: Store certificate in Supabase ─────────────────────────
+    # Step 7: Store certificate
     try:
         await store_certificate(
             supabase=supabase,
@@ -206,12 +191,10 @@ async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
             api_key_id=auth_ctx.get("api_key_id"),
         )
     except Exception as exc:
-        # Storage failure should not prevent returning the certificate —
-        # log it but return the result anyway.
-        if sentry_dsn:
-            sentry_sdk.capture_exception(exc)
+        _capture(exc)
+        # Storage failure does not block the response
 
-    # ── Step 8: Log usage ─────────────────────────────────────────────
+    # Step 8: Log usage
     try:
         await log_usage(
             supabase=supabase,
@@ -225,7 +208,7 @@ async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
             client_ip=auth_ctx.get("client_ip"),
         )
     except Exception:
-        pass  # Usage logging is non-critical
+        pass
 
     return CertificateResponse(**certificate)
 
@@ -246,17 +229,10 @@ async def get_certificate_by_id(
     certificate_id: str,
     request: Request,
 ) -> CertificateResponse:
-    """Retrieve a stored certificate by its ID.
-
-    Certificates are permanent and publicly accessible by ID.
-    Anyone with the certificate ID can retrieve and verify it.
-    """
     supabase = _get_supabase()
-
     cert = await get_certificate(supabase=supabase, certificate_id=certificate_id)
     if not cert:
         raise certificate_not_found(certificate_id)
-
     return CertificateResponse(**cert)
 
 
@@ -266,12 +242,17 @@ async def get_certificate_by_id(
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    if sentry_dsn:
-        sentry_sdk.capture_exception(exc)
+    _capture(exc)
     return JSONResponse(
         status_code=500,
-        content={
-            "error": "INTERNAL_ERROR",
-            "message": "An unexpected error occurred.",
-        },
+        content={"error": "INTERNAL_ERROR", "message": "An unexpected error occurred."},
     )
+
+
+def _capture(exc: Exception) -> None:
+    if sentry_dsn:
+        try:
+            import sentry_sdk
+            sentry_sdk.capture_exception(exc)
+        except Exception:
+            pass
