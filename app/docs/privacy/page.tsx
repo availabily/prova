@@ -1,4 +1,8 @@
-export function PrivacyPage() {
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = { title: 'Data & Privacy — Prova Docs' }
+
+export default function PrivacyPage() {
   return (
     <article className="space-y-10">
       <div className="space-y-3">
@@ -12,14 +16,14 @@ export function PrivacyPage() {
       <Section title="What is stored">
         <div className="border border-border divide-y divide-border">
           {[
-            { item: 'Certificate ID, timestamp, verdict, confidence score', stored: 'Always', note: 'Required for certificate to be valid and permanent.' },
-            { item: 'Argument graph (nodes and edges)',                      stored: 'Always', note: 'Required for certificate page and D3 visualization.' },
-            { item: 'Failure detail (type, location, description)',          stored: 'Always (if INVALID)', note: 'Required for compliance documentation.' },
-            { item: 'SHA-256 hash',                                          stored: 'Always', note: 'Required for independent verification.' },
-            { item: 'Original reasoning text',                               stored: 'When retain=true (default)', note: 'Set retain=false to prevent storage.' },
-            { item: 'Caller metadata',                                       stored: 'When provided', note: 'Pipeline names, model names, decision IDs you provide.' },
-            { item: 'API key (raw)',                                         stored: 'Never', note: 'Only the SHA-256 hash of your key is stored.' },
-            { item: 'Usage logs (request metadata)',                         stored: 'Always', note: 'Reasoning length, verdict, timestamp. Never reasoning content.' },
+            { item: 'Certificate ID, timestamp, verdict, confidence score', stored: 'Always',                      note: 'Required for certificate to be valid and permanent.' },
+            { item: 'Argument graph (nodes and edges)',                      stored: 'Always',                      note: 'Required for certificate page and D3 visualization.' },
+            { item: 'Failure detail (type, location, description)',          stored: 'Always (if INVALID)',          note: 'Required for compliance documentation.' },
+            { item: 'SHA-256 hash',                                          stored: 'Always',                      note: 'Required for independent verification.' },
+            { item: 'Original reasoning text',                               stored: 'When retain=true (default)',   note: 'Set retain=false to prevent storage.' },
+            { item: 'Caller metadata',                                       stored: 'When provided',               note: 'Pipeline names, model names, decision IDs you provide.' },
+            { item: 'API key (raw)',                                         stored: 'Never',                       note: 'Only the SHA-256 hash of your key is stored.' },
+            { item: 'Usage logs (request metadata)',                         stored: 'Always',                      note: 'Reasoning length, verdict, timestamp. Never reasoning content.' },
           ].map(r => (
             <div key={r.item} className="grid grid-cols-[1fr_140px] gap-4 px-4 py-3 items-start">
               <div>
@@ -89,11 +93,22 @@ export function PrivacyPage() {
       <Section title="Contact">
         <p className="mono text-xs text-dim leading-relaxed">
           Data questions:{' '}
-          <a href="mailto:kian@cobound.dev" className="text-text hover:underline">kian@cobound.dev</a>
+          <a href="mailto:kian@cobound.dev" className="text-text hover:underline">
+            kian@cobound.dev
+          </a>
           <br />
           For GDPR data subject requests, include your account email and the nature of the request.
         </p>
       </Section>
     </article>
+  )
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-4">
+      <h2 className="mono text-sm font-semibold text-text border-b border-border pb-2">{title}</h2>
+      {children}
+    </section>
   )
 }
