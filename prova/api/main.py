@@ -38,7 +38,7 @@ from prova.extraction.validator import validate_extraction
 from prova.storage.client import store_certificate, get_certificate, log_usage
 
 # ---------------------------------------------------------------------------
-# Sentry (optional — skip if SENTRY_DSN not set)
+# Sentry — optional, initialised only if SENTRY_DSN is set
 # ---------------------------------------------------------------------------
 
 sentry_dsn = os.environ.get("SENTRY_DSN")
@@ -51,7 +51,18 @@ if sentry_dsn:
             traces_sample_rate=0.1,
         )
     except ImportError:
-        pass
+        sentry_dsn = None  # sentry-sdk not installed, disable silently
+
+
+def _capture(exc: Exception) -> None:
+    """Capture exception to Sentry if configured."""
+    if sentry_dsn:
+        try:
+            import sentry_sdk
+            sentry_sdk.capture_exception(exc)
+        except Exception:
+            pass
+
 
 # ---------------------------------------------------------------------------
 # App
@@ -98,7 +109,7 @@ def _get_supabase() -> Client:
 
 
 # ---------------------------------------------------------------------------
-# Health endpoint
+# Health
 # ---------------------------------------------------------------------------
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
@@ -111,7 +122,7 @@ async def health() -> HealthResponse:
 
 
 # ---------------------------------------------------------------------------
-# Verify endpoint
+# Verify
 # ---------------------------------------------------------------------------
 
 @app.post(
@@ -130,7 +141,7 @@ async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
 
     auth_ctx = await resolve_auth(request, supabase)
 
-    # Step 1: Extract argument graph
+    # Step 1: Extract
     try:
         extraction = extract_argument_graph(
             reasoning=body.reasoning,
@@ -151,13 +162,13 @@ async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
             raise no_structure_detected()
         raise extraction_ambiguous(score)
 
-    # Step 3: Build AgentNetwork
+    # Step 3: Build network
     try:
         network, graph_metadata = build_network(extraction)
     except ValueError as exc:
         raise extraction_failed(str(exc)) from exc
 
-    # Step 4: Run analysis
+    # Step 4: Analyze
     try:
         result = analyze(
             network=network,
@@ -168,7 +179,7 @@ async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
         _capture(exc)
         raise analysis_failed(str(exc)) from exc
 
-    # Step 5: Build argument graph JSON
+    # Step 5: Build graph JSON
     argument_graph = network_to_graph_json(network, graph_metadata)
 
     # Step 6: Generate certificate
@@ -182,7 +193,7 @@ async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
         metadata=body.metadata,
     )
 
-    # Step 7: Store certificate
+    # Step 7: Store
     try:
         await store_certificate(
             supabase=supabase,
@@ -192,7 +203,6 @@ async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
         )
     except Exception as exc:
         _capture(exc)
-        # Storage failure does not block the response
 
     # Step 8: Log usage
     try:
@@ -214,15 +224,13 @@ async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
 
 
 # ---------------------------------------------------------------------------
-# Get certificate endpoint
+# Get certificate
 # ---------------------------------------------------------------------------
 
 @app.get(
     "/certificate/{certificate_id}",
     response_model=CertificateResponse,
-    responses={
-        404: {"model": ErrorResponse, "description": "Certificate not found"},
-    },
+    responses={404: {"model": ErrorResponse}},
     tags=["certificates"],
 )
 async def get_certificate_by_id(
@@ -247,12 +255,3 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         status_code=500,
         content={"error": "INTERNAL_ERROR", "message": "An unexpected error occurred."},
     )
-
-
-def _capture(exc: Exception) -> None:
-    if sentry_dsn:
-        try:
-            import sentry_sdk
-            sentry_sdk.capture_exception(exc)
-        except Exception:
-            pass
