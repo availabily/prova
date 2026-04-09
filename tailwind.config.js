@@ -7,10 +7,10 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        bg:      '#0A0A0A',
-        surface: '#111111',
-        border:  '#1F1F1F',
-        muted:   '#3A3A3A',
+        bg:      '#050505',
+        surface: '#0D0D0D',
+        border:  '#1A1A1A',
+        muted:   '#333333',
         dim:     '#6B7280',
         text:    '#E8E8E8',
         valid:   '#22C55E',
@@ -19,6 +19,7 @@ module.exports = {
       fontFamily: {
         mono:    ['var(--font-mono)', 'JetBrains Mono', 'Courier New', 'monospace'],
         sans:    ['var(--font-sans)', 'DM Sans', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'Outfit', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         'fade-up': {
