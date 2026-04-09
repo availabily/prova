@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { JetBrains_Mono, DM_Sans } from 'next/font/google'
+import { JetBrains_Mono, DM_Sans, Outfit } from 'next/font/google'
 import './globals.css'
 
 const jetbrainsMono = JetBrains_Mono({
@@ -11,6 +11,12 @@ const jetbrainsMono = JetBrains_Mono({
 const dmSans = DM_Sans({
   subsets: ['latin'],
   variable: '--font-sans',
+  display: 'swap',
+})
+
+const outfit = Outfit({
+  subsets: ['latin'],
+  variable: '--font-display',
   display: 'swap',
 })
 
@@ -43,7 +49,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${jetbrainsMono.variable} ${dmSans.variable}`}>
+    <html lang="en" className={`${jetbrainsMono.variable} ${dmSans.variable} ${outfit.variable}`}>
       <body className="bg-bg text-text font-sans antialiased">
         {children}
       </body>

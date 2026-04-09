@@ -22,7 +22,7 @@ export default function VerdictBadge({ verdict, size = 'md', animate = true }: P
   const sizeClasses = {
     sm: 'text-sm tracking-widest',
     md: 'text-2xl tracking-widest',
-    lg: 'text-5xl tracking-widest',
+    lg: 'text-5xl tracking-[0.15em]',
   }
 
   return (
@@ -37,7 +37,7 @@ export default function VerdictBadge({ verdict, size = 'md', animate = true }: P
     >
       <span className={clsx(
         'inline-flex items-center justify-center rounded-full border-2 shrink-0',
-        size === 'lg' ? 'w-10 h-10 text-xl' : size === 'md' ? 'w-7 h-7 text-sm' : 'w-5 h-5 text-xs',
+        size === 'lg' ? 'w-11 h-11 text-xl' : size === 'md' ? 'w-7 h-7 text-sm' : 'w-5 h-5 text-xs',
         isValid
           ? 'border-valid text-valid'
           : 'border-invalid text-invalid',
