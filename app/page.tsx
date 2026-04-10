@@ -288,10 +288,17 @@ function TrustStat({ number, label, delay }: { number: string; label: string; de
 function SampleCertCard({ id, verdict, label, confidence, failureType, snippet }: {
   id: string; verdict: 'VALID' | 'INVALID'; label: string; confidence: number; failureType?: string; snippet: string
 }) {
+  const isReal = !id.includes('DEMO') && !id.includes('FAIL')
+  const Wrapper = isReal ? Link : 'div'
+  const wrapperProps = isReal
+    ? { href: `/certificate/${id}` }
+    : {}
   return (
-    <Link
-      href={`/certificate/${id}`}
-      className="block border border-border hover:border-muted transition-all duration-200 p-6 space-y-3 group bg-surface/30 hover:bg-surface/50"
+    <Wrapper
+      {...wrapperProps as any}
+      className={`block border border-border transition-all duration-200 p-6 space-y-3 bg-surface/30 ${
+        isReal ? 'hover:border-muted hover:bg-surface/50 group cursor-pointer' : 'opacity-80'
+      }`}
     >
       <div className="flex items-center justify-between">
         <VerdictBadge verdict={verdict} size="sm" animate={false} />
@@ -300,8 +307,10 @@ function SampleCertCard({ id, verdict, label, confidence, failureType, snippet }
       <div className="mono text-xs text-dim font-medium">{label}</div>
       {failureType && <div className="mono text-xs text-invalid">{failureType}</div>}
       <p className="text-xs text-muted leading-relaxed line-clamp-3">{snippet}</p>
-      <div className="mono text-xs text-muted group-hover:text-dim transition-colors duration-200">{id}</div>
-    </Link>
+      <div className="mono text-xs text-muted group-hover:text-dim transition-colors duration-200">
+        {isReal ? id : `${id} (demo)`}
+      </div>
+    </Wrapper>
   )
 }
 
