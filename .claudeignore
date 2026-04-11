@@ -1,0 +1,11 @@
+.next/
+node_modules/
+.vercel/
+__pycache__/
+*.pyc
+.DS_Store
+package-lock.json
+*.egg-info/
+dist/
+build/
+.pytest_cache/
