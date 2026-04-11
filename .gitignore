@@ -24,3 +24,9 @@ npm-debug.log*
 
 # package lock
 package-lock.json
+
+# python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
