@@ -29,6 +29,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import (
     HRFlowable,
+    PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -88,6 +89,20 @@ def generate_pdf(certificate: dict[str, Any]) -> bytes:
 
     # ── Confidence + versions ─────────────────────────────────────────
     story.append(_meta_block(certificate, styles))
+    story.append(Spacer(1, 0.35 * cm))
+    story.append(_issued_by_block(certificate, styles))
+    story.append(Spacer(1, 0.6 * cm))
+
+    findings = _build_findings(certificate)
+
+    # Keep shorter findings lists on the first page.
+    if len(findings) >= 5:
+        story.append(PageBreak())
+
+    # ── Findings summary ───────────────────────────────────────────────
+    story.append(_section_heading("Findings Summary", styles))
+    story.append(Spacer(1, 0.2 * cm))
+    story.append(_findings_table(findings))
     story.append(Spacer(1, 0.6 * cm))
 
     # ── Argument graph table ──────────────────────────────────────────
@@ -166,8 +181,10 @@ def _meta_block(cert: dict, styles: Any) -> Paragraph:
     score = cert["confidence_score"]
     pv = cert["prova_version"]
     vv = cert["validator_version"]
+    issued_at = cert.get("issued_at") or cert.get("timestamp", "")
     return Paragraph(
         f'<font size="10" color="#6B7280">'
+        f'Issued: {_legal_timestamp(issued_at)} &nbsp;&nbsp;|&nbsp;&nbsp; '
         f'Confidence: {score}/100 &nbsp;&nbsp;|&nbsp;&nbsp; '
         f'Prova v{pv} &nbsp;&nbsp;|&nbsp;&nbsp; '
         f'Validator v{vv}'
@@ -193,6 +210,7 @@ def _graph_table(cert: dict) -> Table:
     graph = cert.get("argument_graph", {})
     nodes = graph.get("nodes", [])
     edges = graph.get("edges", [])
+    max_nodes = 12
 
     header = [
         Paragraph("<b>ID</b>", _mono_style(bold=True)),
@@ -201,11 +219,21 @@ def _graph_table(cert: dict) -> Table:
     ]
     rows = [header]
 
-    for node in nodes:
+    for node in nodes[:max_nodes]:
         rows.append([
             Paragraph(f'<font name="Courier" size="8">{node["id"]}</font>', _mono_style()),
             Paragraph(f'<font size="8">{node.get("text", "")[:120]}</font>', _mono_style()),
             Paragraph(f'<font name="Courier" size="8">{node.get("type", "")}</font>', _mono_style()),
+        ])
+
+    if len(nodes) > max_nodes:
+        rows.append([
+            Paragraph('<font name="Courier" size="8">…</font>', _mono_style()),
+            Paragraph(
+                f'<font size="8">+{len(nodes) - max_nodes} more node(s) omitted in PDF view</font>',
+                _mono_style(),
+            ),
+            Paragraph("", _mono_style()),
         ])
 
     # Add edge summary row
@@ -226,6 +254,83 @@ def _graph_table(cert: dict) -> Table:
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [_WHITE, _LIGHT_GREY]),
         ("GRID", (0, 0), (-1, -1), 0.25, _GREY),
         ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    return t
+
+
+def _issued_by_block(cert: dict, styles: Any) -> Table:
+    metadata = cert.get("metadata") or {}
+    framework = metadata.get("framework", "EU AI Act")
+    engine_version = cert.get("validator_version", "unknown")
+    rows = [
+        [Paragraph("<b>Issued by</b>", _label_style())],
+        [Paragraph("Prova Reasoning Validation", styles["Normal"])],
+        [Paragraph(f"Framework: {framework}", styles["Normal"])],
+        [Paragraph(f"Analysis engine: cobound-validator v{engine_version}", styles["Normal"])],
+    ]
+    t = Table(rows, colWidths=[15.5 * cm])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), _LIGHT_GREY),
+        ("BOX", (0, 0), (-1, -1), 0.25, _GREY),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    return t
+
+
+def _build_findings(cert: dict[str, Any]) -> list[dict[str, str]]:
+    nodes = cert.get("argument_graph", {}).get("nodes", [])
+    failure = cert.get("failure") or {}
+    affected_nodes = set(failure.get("affected_nodes") or [])
+    flaw = failure.get("type", "")
+
+    findings: list[dict[str, str]] = []
+    for idx, node in enumerate(nodes, start=1):
+        node_id = node.get("id", f"step-{idx}")
+        step_label = f"{idx}. {node.get('text', '')[:90]}"
+        failed = node_id in affected_nodes
+        findings.append({
+            "step": step_label,
+            "status": "✗" if failed else "✓",
+            "flaw": flaw if failed else "—",
+        })
+    return findings[:12]
+
+
+def _findings_table(findings: list[dict[str, str]]) -> Table:
+    rows: list[list[Any]] = [[
+        Paragraph("<b>Logical step</b>", _mono_style(bold=True)),
+        Paragraph("<b>Pass/Fail</b>", _mono_style(bold=True)),
+        Paragraph("<b>Flaw (if failed)</b>", _mono_style(bold=True)),
+    ]]
+
+    if not findings:
+        rows.append([
+            Paragraph('<font size="8">No logical steps extracted.</font>', _mono_style()),
+            Paragraph('<font size="8">—</font>', _mono_style()),
+            Paragraph('<font size="8">—</font>', _mono_style()),
+        ])
+    else:
+        for finding in findings:
+            rows.append([
+                Paragraph(f'<font size="8">{finding["step"]}</font>', _mono_style()),
+                Paragraph(f'<font size="10">{finding["status"]}</font>', _mono_style()),
+                Paragraph(f'<font size="8">{finding["flaw"]}</font>', _mono_style()),
+            ])
+
+    t = Table(rows, colWidths=[11 * cm, 2 * cm, 4 * cm])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), _BLACK),
+        ("TEXTCOLOR", (0, 0), (-1, 0), _WHITE),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [_WHITE, _LIGHT_GREY]),
+        ("GRID", (0, 0), (-1, -1), 0.25, _GREY),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 4),
         ("RIGHTPADDING", (0, 0), (-1, -1), 4),
@@ -300,8 +405,17 @@ def _reasoning_block(cert: dict, styles: Any) -> Paragraph:
 
 
 def _footer_block(cert: dict, styles: Any) -> Table:
+    certificate_url = cert.get("certificate_url", "")
+    verify_url = cert.get("verification_url") or (
+        certificate_url.replace("/certificate/", "/verify/") if certificate_url else ""
+    )
+
     url_line = Paragraph(
-        f'<font name="Courier" size="8">{cert.get("certificate_url", "")}</font>',
+        f'<font name="Courier" size="8">{certificate_url}</font>',
+        styles["Normal"],
+    )
+    verify_line = Paragraph(
+        f'<font name="Courier" size="8">Verify: {verify_url}</font>',
         styles["Normal"],
     )
     hash_line = Paragraph(
@@ -317,7 +431,7 @@ def _footer_block(cert: dict, styles: Any) -> Table:
         "</i></font>",
         styles["Normal"],
     )
-    t = Table([[url_line], [hash_line], [Spacer(1, 0.2 * cm)], [disclaimer]])
+    t = Table([[url_line], [verify_line], [hash_line], [Spacer(1, 0.2 * cm)], [disclaimer]])
     t.setStyle(TableStyle([
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 0),

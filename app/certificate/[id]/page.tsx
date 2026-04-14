@@ -8,14 +8,19 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { getCertificate, formatTimestamp, type Certificate } from '@/lib/api'
+import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
+import { getCertificate, formatTimestamp, type RepairSuggestion, isRepairSuggestion } from '@/lib/api'
 import VerdictBadge from '@/components/VerdictBadge'
 import ArgumentGraphViz from '@/components/ArgumentGraph'
 import CopyButton from '@/components/CopyButton'
 import DisclaimerBlock from '@/components/DisclaimerBlock'
+import RepairSuggestions from '@/components/RepairSuggestions'
+import ReasoningDiff from '@/components/ReasoningDiff'
 
 interface Props {
   params: { id: string }
+  searchParams?: { from?: string }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -32,10 +37,48 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function CertificatePage({ params }: Props) {
+export default async function CertificatePage({ params, searchParams }: Props) {
   const { data: cert, error } = await getCertificate(params.id)
 
   if (!cert || error) notFound()
+
+  const cookieStore = cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+      },
+    }
+  )
+
+  const { data: authResult } = await supabase.auth.getUser()
+  const user = authResult.user
+  let userTier: 'free' | 'pro' = 'free'
+  if (user) {
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('tier')
+      .eq('id', user.id)
+      .maybeSingle()
+    userTier = userRow?.tier === 'pro' ? 'pro' : 'free'
+  }
+
+  const metadata = (cert.metadata ?? {}) as Record<string, unknown>
+  const rawSuggestions =
+    cert.repair_suggestions ??
+    metadata.repair_suggestions ??
+    metadata.suggested_fixes
+
+  const repairSuggestions: RepairSuggestion[] = Array.isArray(rawSuggestions)
+    ? rawSuggestions.filter(isRepairSuggestion)
+    : []
+
+  const previousCertId = searchParams?.from
+  const { data: previousCert } = previousCertId ? await getCertificate(previousCertId) : { data: null }
 
   const isValid = cert.verdict === 'VALID'
   const borderColor = isValid ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'
@@ -148,15 +191,38 @@ export default async function CertificatePage({ params }: Props) {
           </div>
         )}
 
+        {!isValid && repairSuggestions.length > 0 && (
+          <div className="animate-fade-up animate-delay-300 border border-border p-6 space-y-5">
+            <SectionLabel>Repair Suggestions</SectionLabel>
+            <RepairSuggestions suggestions={repairSuggestions} tier={userTier} certId={cert.certificate_id} />
+          </div>
+        )}
+
         {/* Original reasoning */}
         {cert.original_reasoning ? (
-          <div className="animate-fade-up animate-delay-300 space-y-3">
+          <div className="animate-fade-up animate-delay-400 space-y-3">
             <SectionLabel>Original Reasoning Chain</SectionLabel>
             <div className="reasoning-block">{cert.original_reasoning}</div>
           </div>
         ) : (
-          <div className="animate-fade-up animate-delay-300 border border-border p-4 mono text-xs text-muted">
+          <div className="animate-fade-up animate-delay-400 border border-border p-4 mono text-xs text-muted">
             Original reasoning not stored (retain=false was set for this certificate).
+          </div>
+        )}
+
+        {previousCert && previousCert.original_reasoning && cert.original_reasoning && (
+          <div className="animate-fade-up animate-delay-400 space-y-3">
+            <SectionLabel>Auto-Repair Diff</SectionLabel>
+            <p className="mono text-xs text-dim">
+              {previousCert.verdict} → {cert.verdict}
+            </p>
+            <p className="mono text-xs text-dim">
+              Confidence: {previousCert.confidence_score} → {cert.confidence_score}
+            </p>
+            <ReasoningDiff
+              original={previousCert.original_reasoning}
+              repaired={cert.original_reasoning}
+            />
           </div>
         )}
 
