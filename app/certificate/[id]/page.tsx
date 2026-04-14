@@ -10,14 +10,17 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
-import { getCertificate, formatTimestamp, type Certificate } from '@/lib/api'
+import { getCertificate, formatTimestamp, type RepairSuggestion, isRepairSuggestion } from '@/lib/api'
 import VerdictBadge from '@/components/VerdictBadge'
 import ArgumentGraphViz from '@/components/ArgumentGraph'
 import CopyButton from '@/components/CopyButton'
 import DisclaimerBlock from '@/components/DisclaimerBlock'
+import RepairSuggestions from '@/components/RepairSuggestions'
+import ReasoningDiff from '@/components/ReasoningDiff'
 
 interface Props {
   params: { id: string }
+  searchParams?: { from?: string }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -34,7 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function CertificatePage({ params }: Props) {
+export default async function CertificatePage({ params, searchParams }: Props) {
   const { data: cert, error } = await getCertificate(params.id)
 
   if (!cert || error) notFound()
@@ -63,6 +66,19 @@ export default async function CertificatePage({ params }: Props) {
       .maybeSingle()
     userTier = userRow?.tier === 'pro' ? 'pro' : 'free'
   }
+
+  const metadata = (cert.metadata ?? {}) as Record<string, unknown>
+  const rawSuggestions =
+    cert.repair_suggestions ??
+    metadata.repair_suggestions ??
+    metadata.suggested_fixes
+
+  const repairSuggestions: RepairSuggestion[] = Array.isArray(rawSuggestions)
+    ? rawSuggestions.filter(isRepairSuggestion)
+    : []
+
+  const previousCertId = searchParams?.from
+  const { data: previousCert } = previousCertId ? await getCertificate(previousCertId) : { data: null }
 
   const isValid = cert.verdict === 'VALID'
   const borderColor = isValid ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'
@@ -175,41 +191,10 @@ export default async function CertificatePage({ params }: Props) {
           </div>
         )}
 
-        {!isValid && cert.repair_suggestions.length > 0 && (
+        {!isValid && repairSuggestions.length > 0 && (
           <div className="animate-fade-up animate-delay-300 border border-border p-6 space-y-5">
             <SectionLabel>Repair Suggestions</SectionLabel>
-            {userTier === 'pro' ? (
-              <div className="space-y-4">
-                {cert.repair_suggestions.map((item, idx) => (
-                  <div key={`${item.step_index}-${idx}`} className="border border-border bg-surface/30 p-4 space-y-2">
-                    <p className="mono text-xs text-muted">step {item.step_index}</p>
-                    <p className="mono text-xs text-dim"><span className="text-muted">issue:</span> {item.issue}</p>
-                    <p className="mono text-xs text-dim"><span className="text-muted">suggestion:</span> {item.suggestion}</p>
-                    <p className="mono text-xs text-dim"><span className="text-muted">revised:</span> {item.revised_step}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="relative border border-border bg-surface/30 p-4">
-                  <div className="blur-sm select-none">
-                    <p className="mono text-xs text-muted">step {cert.repair_suggestions[0].step_index}</p>
-                    <p className="mono text-xs text-dim">issue: {cert.repair_suggestions[0].issue}</p>
-                    <p className="mono text-xs text-dim">suggestion: {cert.repair_suggestions[0].suggestion}</p>
-                    <p className="mono text-xs text-dim">revised: {cert.repair_suggestions[0].revised_step}</p>
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center bg-bg/30">
-                    <span className="mono text-xs text-text border border-border px-3 py-1.5 bg-bg/80">Pro feature</span>
-                  </div>
-                </div>
-                <Link
-                  href="/pricing"
-                  className="inline-flex mono text-xs border border-valid/40 text-valid px-4 py-2 hover:border-valid transition-colors"
-                >
-                  Upgrade to Pro
-                </Link>
-              </div>
-            )}
+            <RepairSuggestions suggestions={repairSuggestions} tier={userTier} certId={cert.certificate_id} />
           </div>
         )}
 
@@ -222,6 +207,22 @@ export default async function CertificatePage({ params }: Props) {
         ) : (
           <div className="animate-fade-up animate-delay-400 border border-border p-4 mono text-xs text-muted">
             Original reasoning not stored (retain=false was set for this certificate).
+          </div>
+        )}
+
+        {previousCert && previousCert.original_reasoning && cert.original_reasoning && (
+          <div className="animate-fade-up animate-delay-400 space-y-3">
+            <SectionLabel>Auto-Repair Diff</SectionLabel>
+            <p className="mono text-xs text-dim">
+              {previousCert.verdict} → {cert.verdict}
+            </p>
+            <p className="mono text-xs text-dim">
+              Confidence: {previousCert.confidence_score} → {cert.confidence_score}
+            </p>
+            <ReasoningDiff
+              original={previousCert.original_reasoning}
+              repaired={cert.original_reasoning}
+            />
           </div>
         )}
 

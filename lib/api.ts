@@ -41,6 +41,14 @@ export interface FailureDetail {
   known_consequence: KnownConsequence | null
 }
 
+export interface RepairSuggestion {
+  step_index?: number
+  problematic_step?: string
+  issue: string
+  suggestion: string
+  revised_step: string
+}
+
 export interface Certificate {
   certificate_id: string
   timestamp: string
@@ -51,12 +59,7 @@ export interface Certificate {
   extraction_prompt_version: string
   argument_graph: ArgumentGraph
   failure: FailureDetail | null
-  repair_suggestions: Array<{
-    step_index: number
-    issue: string
-    suggestion: string
-    revised_step: string
-  }>
+  repair_suggestions: RepairSuggestion[]
   original_reasoning: string | null
   metadata: Record<string, unknown>
   certificate_url: string
@@ -67,6 +70,22 @@ export interface ApiError {
   error: string
   message: string
   confidence_score?: number
+}
+
+
+export function isRepairSuggestion(value: unknown): value is RepairSuggestion {
+  if (!value || typeof value !== 'object') return false
+
+  const item = value as Record<string, unknown>
+  const hasStepIndex = typeof item.step_index === 'number'
+  const hasProblematicStep = typeof item.problematic_step === 'string'
+
+  return (
+    (hasStepIndex || hasProblematicStep) &&
+    typeof item.issue === 'string' &&
+    typeof item.suggestion === 'string' &&
+    typeof item.revised_step === 'string'
+  )
 }
 
 export interface VerifyRequest {
