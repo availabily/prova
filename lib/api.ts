@@ -41,6 +41,12 @@ export interface FailureDetail {
   known_consequence: KnownConsequence | null
 }
 
+export interface RepairSuggestion {
+  problematic_step: string
+  issue: string
+  revised_step: string
+}
+
 export interface Certificate {
   certificate_id: string
   timestamp: string
@@ -53,6 +59,8 @@ export interface Certificate {
   failure: FailureDetail | null
   original_reasoning: string | null
   metadata: Record<string, unknown>
+  repair_suggestions?: RepairSuggestion[] | null
+  user_tier?: 'free' | 'pro'
   certificate_url: string
   sha256: string
 }

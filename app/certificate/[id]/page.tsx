@@ -8,11 +8,12 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { getCertificate, formatTimestamp, type Certificate } from '@/lib/api'
+import { getCertificate, formatTimestamp, type RepairSuggestion } from '@/lib/api'
 import VerdictBadge from '@/components/VerdictBadge'
 import ArgumentGraphViz from '@/components/ArgumentGraph'
 import CopyButton from '@/components/CopyButton'
 import DisclaimerBlock from '@/components/DisclaimerBlock'
+import RepairSuggestions from '@/components/RepairSuggestions'
 
 interface Props {
   params: { id: string }
@@ -38,6 +39,13 @@ export default async function CertificatePage({ params }: Props) {
   if (!cert || error) notFound()
 
   const isValid = cert.verdict === 'VALID'
+  const metadata = cert.metadata as Record<string, unknown>
+  const metadataTier = metadata.tier === 'pro' || metadata.user_tier === 'pro' ? 'pro' : 'free'
+  const userTier = cert.user_tier ?? metadataTier
+  const rawSuggestions = cert.repair_suggestions ?? metadata.repair_suggestions ?? metadata.suggested_fixes
+  const repairSuggestions = Array.isArray(rawSuggestions)
+    ? rawSuggestions.filter(isRepairSuggestion)
+    : []
   const borderColor = isValid ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'
   const accentColor = isValid ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'
 
@@ -148,6 +156,11 @@ export default async function CertificatePage({ params }: Props) {
           </div>
         )}
 
+        {/* Repair suggestions (INVALID only) */}
+        {!isValid && cert.failure && repairSuggestions.length > 0 && (
+          <RepairSuggestions suggestions={repairSuggestions} tier={userTier} />
+        )}
+
         {/* Original reasoning */}
         {cert.original_reasoning ? (
           <div className="animate-fade-up animate-delay-300 space-y-3">
@@ -184,6 +197,17 @@ export default async function CertificatePage({ params }: Props) {
         <DisclaimerBlock />
       </main>
     </div>
+  )
+}
+
+
+function isRepairSuggestion(value: unknown): value is RepairSuggestion {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Record<string, unknown>
+  return (
+    typeof candidate.problematic_step === 'string'
+    && typeof candidate.issue === 'string'
+    && typeof candidate.revised_step === 'string'
   )
 }
 
