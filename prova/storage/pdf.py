@@ -300,8 +300,15 @@ def _reasoning_block(cert: dict, styles: Any) -> Paragraph:
 
 
 def _footer_block(cert: dict, styles: Any) -> Table:
+    certificate_url = cert.get("certificate_url", "")
+    verify_url = certificate_url.replace("/certificate/", "/verify/") if certificate_url else ""
+
     url_line = Paragraph(
-        f'<font name="Courier" size="8">{cert.get("certificate_url", "")}</font>',
+        f'<font name="Courier" size="8">{certificate_url}</font>',
+        styles["Normal"],
+    )
+    verify_line = Paragraph(
+        f'<font name="Courier" size="8">Verify: {verify_url}</font>',
         styles["Normal"],
     )
     hash_line = Paragraph(
@@ -317,7 +324,7 @@ def _footer_block(cert: dict, styles: Any) -> Table:
         "</i></font>",
         styles["Normal"],
     )
-    t = Table([[url_line], [hash_line], [Spacer(1, 0.2 * cm)], [disclaimer]])
+    t = Table([[url_line], [verify_line], [hash_line], [Spacer(1, 0.2 * cm)], [disclaimer]])
     t.setStyle(TableStyle([
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 0),
