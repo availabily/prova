@@ -87,6 +87,14 @@ class KnownConsequence(BaseModel):
     severity: str
 
 
+class RepairSuggestion(BaseModel):
+    """A single repair suggestion for a failed reasoning step."""
+    step_index: int
+    issue: str
+    suggestion: str
+    revised_step: str
+
+
 class FailureDetail(BaseModel):
     """Failure diagnosis — present only on INVALID certificates."""
     type: str                              # CIRCULAR | CONTRADICTION | UNSUPPORTED_LEAP
@@ -115,6 +123,7 @@ class CertificateResponse(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     certificate_url: str
     sha256: str
+    repair_suggestions: list[RepairSuggestion] | None = None
 
 
 class HealthResponse(BaseModel):

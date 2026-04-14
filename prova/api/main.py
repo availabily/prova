@@ -21,6 +21,7 @@ from supabase import Client, create_client
 
 from prova.analysis.analyzer import analyze
 from prova.analysis.graph_builder import build_network, network_to_graph_json
+from prova.analysis.repair import generate_repair_suggestions
 from prova.api.auth import resolve_auth
 from prova.api.errors import (
     analysis_failed,
@@ -183,6 +184,19 @@ async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
     # Step 5: Build graph JSON
     argument_graph = network_to_graph_json(network, graph_metadata)
 
+    # Step 5.5: Generate repair suggestions (only for INVALID verdicts)
+    repair_suggestions = None
+    if not result.feasible and result.failure_detail:
+        try:
+            repair_suggestions = generate_repair_suggestions(
+                reasoning=body.reasoning,
+                failure=result.failure_detail,
+                argument_graph=argument_graph,
+            )
+        except Exception as exc:
+            _capture(exc)
+            # Non-blocking: repairs are optional
+
     # Step 6: Generate certificate
     certificate = generate_certificate(
         reasoning=body.reasoning,
@@ -192,6 +206,7 @@ async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
         analysis_result=result,
         retain=body.retain,
         metadata=body.metadata,
+        repair_suggestions=repair_suggestions,
     )
 
     # Step 7: Store

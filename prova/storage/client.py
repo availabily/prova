@@ -47,6 +47,7 @@ async def store_certificate(
         "sha256":                   certificate["sha256"],
         "user_id":                  user_id,
         "api_key_id":               api_key_id,
+        "repair_suggestions":       certificate.get("repair_suggestions"),
     }
 
     supabase.table("certificates").insert(row).execute()
@@ -95,6 +96,7 @@ async def get_certificate(
             f"https://prova.cobound.dev/certificate/{row['id']}"
         ),
         "sha256":                     row["sha256"],
+        "repair_suggestions":         row.get("repair_suggestions"),
     }
 
 

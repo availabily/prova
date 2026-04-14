@@ -101,6 +101,7 @@ def generate_certificate(
     analysis_result: Any,          # AnalysisResult from analyzer.py
     retain: bool = True,
     metadata: dict[str, Any] | None = None,
+    repair_suggestions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Generate a complete Prova certificate dict.
 
@@ -157,6 +158,7 @@ def generate_certificate(
         "metadata": metadata or {},
         "certificate_url": f"{base_url}/certificate/{certificate_id}",
         "sha256": sha256,
+        "repair_suggestions": repair_suggestions,
     }
 
     return cert
