@@ -51,6 +51,12 @@ export interface Certificate {
   extraction_prompt_version: string
   argument_graph: ArgumentGraph
   failure: FailureDetail | null
+  repair_suggestions: Array<{
+    step_index: number
+    issue: string
+    suggestion: string
+    revised_step: string
+  }>
   original_reasoning: string | null
   metadata: Record<string, unknown>
   certificate_url: string

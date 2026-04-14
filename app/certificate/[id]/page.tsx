@@ -8,6 +8,8 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
 import { getCertificate, formatTimestamp, type Certificate } from '@/lib/api'
 import VerdictBadge from '@/components/VerdictBadge'
 import ArgumentGraphViz from '@/components/ArgumentGraph'
@@ -36,6 +38,31 @@ export default async function CertificatePage({ params }: Props) {
   const { data: cert, error } = await getCertificate(params.id)
 
   if (!cert || error) notFound()
+
+  const cookieStore = cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+      },
+    }
+  )
+
+  const { data: authResult } = await supabase.auth.getUser()
+  const user = authResult.user
+  let userTier: 'free' | 'pro' = 'free'
+  if (user) {
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('tier')
+      .eq('id', user.id)
+      .maybeSingle()
+    userTier = userRow?.tier === 'pro' ? 'pro' : 'free'
+  }
 
   const isValid = cert.verdict === 'VALID'
   const borderColor = isValid ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'
@@ -148,14 +175,52 @@ export default async function CertificatePage({ params }: Props) {
           </div>
         )}
 
+        {!isValid && cert.repair_suggestions.length > 0 && (
+          <div className="animate-fade-up animate-delay-300 border border-border p-6 space-y-5">
+            <SectionLabel>Repair Suggestions</SectionLabel>
+            {userTier === 'pro' ? (
+              <div className="space-y-4">
+                {cert.repair_suggestions.map((item, idx) => (
+                  <div key={`${item.step_index}-${idx}`} className="border border-border bg-surface/30 p-4 space-y-2">
+                    <p className="mono text-xs text-muted">step {item.step_index}</p>
+                    <p className="mono text-xs text-dim"><span className="text-muted">issue:</span> {item.issue}</p>
+                    <p className="mono text-xs text-dim"><span className="text-muted">suggestion:</span> {item.suggestion}</p>
+                    <p className="mono text-xs text-dim"><span className="text-muted">revised:</span> {item.revised_step}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="relative border border-border bg-surface/30 p-4">
+                  <div className="blur-sm select-none">
+                    <p className="mono text-xs text-muted">step {cert.repair_suggestions[0].step_index}</p>
+                    <p className="mono text-xs text-dim">issue: {cert.repair_suggestions[0].issue}</p>
+                    <p className="mono text-xs text-dim">suggestion: {cert.repair_suggestions[0].suggestion}</p>
+                    <p className="mono text-xs text-dim">revised: {cert.repair_suggestions[0].revised_step}</p>
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center bg-bg/30">
+                    <span className="mono text-xs text-text border border-border px-3 py-1.5 bg-bg/80">Pro feature</span>
+                  </div>
+                </div>
+                <Link
+                  href="/pricing"
+                  className="inline-flex mono text-xs border border-valid/40 text-valid px-4 py-2 hover:border-valid transition-colors"
+                >
+                  Upgrade to Pro
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Original reasoning */}
         {cert.original_reasoning ? (
-          <div className="animate-fade-up animate-delay-300 space-y-3">
+          <div className="animate-fade-up animate-delay-400 space-y-3">
             <SectionLabel>Original Reasoning Chain</SectionLabel>
             <div className="reasoning-block">{cert.original_reasoning}</div>
           </div>
         ) : (
-          <div className="animate-fade-up animate-delay-300 border border-border p-4 mono text-xs text-muted">
+          <div className="animate-fade-up animate-delay-400 border border-border p-4 mono text-xs text-muted">
             Original reasoning not stored (retain=false was set for this certificate).
           </div>
         )}
