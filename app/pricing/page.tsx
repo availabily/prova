@@ -43,7 +43,7 @@ const PLANS = [
     priceLabel: '$499',
     period: 'per month',
     cta: 'start team trial',
-    ctaHref: 'mailto:kian@cobound.dev?subject=Prova Team Trial',
+    ctaHref: '/login',
     ctaStyle: 'filled',
     highlight: true,
     noCreditCard: false,
