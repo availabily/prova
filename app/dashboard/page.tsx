@@ -8,10 +8,12 @@
  * Supabase auth implementation is a follow-up task.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { formatTimestamp } from '@/lib/api'
 import VerdictBadge from '@/components/VerdictBadge'
+import { supabase } from '@/lib/supabaseClient'
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -66,8 +68,22 @@ const MOCK_KEYS: ApiKey[] = [
 // ── Page ─────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<'certificates' | 'keys'>('certificates')
   const [verdictFilter, setVerdictFilter] = useState<'all' | 'VALID' | 'INVALID'>('all')
+  const [showVerifyToast, setShowVerifyToast] = useState(false)
+
+  useEffect(() => {
+    if (searchParams.get('verifyEmail') === '1') {
+      setShowVerifyToast(true)
+    }
+  }, [searchParams])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   const filteredCerts = MOCK_CERTS.filter((c) =>
     verdictFilter === 'all' ? true : c.verdict === verdictFilter
@@ -83,13 +99,29 @@ export default function DashboardPage() {
         <Link href="/" className="mono text-sm text-text font-bold tracking-wider">PROVA</Link>
         <div className="flex items-center gap-4 mono text-xs text-dim">
           <Link href="/" className="hover:text-text transition-colors">verify →</Link>
-          <button className="border border-border px-3 py-1 hover:border-muted transition-colors text-muted hover:text-dim">
+          <button
+            onClick={handleSignOut}
+            className="border border-border px-3 py-1 hover:border-muted transition-colors text-muted hover:text-dim"
+          >
             sign out
           </button>
         </div>
       </nav>
 
       <main className="pt-24 pb-24 px-6 max-w-5xl mx-auto space-y-8">
+        {showVerifyToast && (
+          <div className="border border-valid/40 bg-valid/10 px-4 py-3 flex items-center justify-between gap-4">
+            <p className="mono text-xs text-valid">
+              Verify your email to complete account activation.
+            </p>
+            <button
+              onClick={() => setShowVerifyToast(false)}
+              className="mono text-xs text-valid hover:opacity-70"
+            >
+              dismiss
+            </button>
+          </div>
+        )}
 
         {/* Header */}
         <div className="animate-fade-up">
