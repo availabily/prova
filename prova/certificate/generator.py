@@ -99,6 +99,7 @@ def generate_certificate(
     confidence_score: int,
     argument_graph: dict[str, Any],
     analysis_result: Any,          # AnalysisResult from analyzer.py
+    repair_suggestions: list[dict[str, Any]] | None = None,
     retain: bool = True,
     metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -153,6 +154,7 @@ def generate_certificate(
         "extraction_prompt_version": extraction.get("prompt_version", "v1"),
         "argument_graph": argument_graph,
         "failure": failure,
+        "repair_suggestions": repair_suggestions or [],
         "original_reasoning": reasoning if retain else None,
         "metadata": metadata or {},
         "certificate_url": f"{base_url}/certificate/{certificate_id}",

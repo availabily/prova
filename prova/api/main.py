@@ -35,6 +35,7 @@ from prova.certificate.generator import generate_certificate
 from prova.certificate.versioning import PROVA_VERSION, get_validator_version
 from prova.extraction.extractor import ExtractionError, extract_argument_graph
 from prova.extraction.validator import validate_extraction
+from prova.repair.suggester import generate_repair_suggestions
 from prova.storage.client import store_certificate, get_certificate, log_usage
 from prova.storage.pdf import generate_pdf
 
@@ -183,18 +184,28 @@ async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
     # Step 5: Build graph JSON
     argument_graph = network_to_graph_json(network, graph_metadata)
 
-    # Step 6: Generate certificate
+    # Step 6: Generate repair suggestions for invalid analyses
+    repair_suggestions: list[dict[str, Any]] = []
+    if result.verdict == "INVALID" and result.failure_detail:
+        flaws = [result.failure_detail]
+        repair_suggestions = generate_repair_suggestions(
+            reasoning=body.reasoning,
+            flaws=flaws,
+        )
+
+    # Step 7: Generate certificate
     certificate = generate_certificate(
         reasoning=body.reasoning,
         extraction=extraction,
         confidence_score=score,
         argument_graph=argument_graph,
         analysis_result=result,
+        repair_suggestions=repair_suggestions,
         retain=body.retain,
         metadata=body.metadata,
     )
 
-    # Step 7: Store
+    # Step 8: Store
     try:
         await store_certificate(
             supabase=supabase,
@@ -205,7 +216,7 @@ async def verify(request: Request, body: VerifyRequest) -> CertificateResponse:
     except Exception as exc:
         _capture(exc)
 
-    # Step 8: Log usage
+    # Step 9: Log usage
     try:
         await log_usage(
             supabase=supabase,

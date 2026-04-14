@@ -98,6 +98,14 @@ class FailureDetail(BaseModel):
     known_consequence: KnownConsequence | None = None
 
 
+class RepairSuggestion(BaseModel):
+    """Step-level fix suggestion for flawed reasoning."""
+    step_index: int
+    issue: str
+    suggestion: str
+    revised_step: str
+
+
 class CertificateResponse(BaseModel):
     """Full certificate response — returned by POST /verify and GET /certificate/{id}."""
 
@@ -111,6 +119,7 @@ class CertificateResponse(BaseModel):
     extraction_prompt_version: str
     argument_graph: dict[str, Any]         # Raw dict — frontend handles rendering
     failure: FailureDetail | None = None
+    repair_suggestions: list[RepairSuggestion] = Field(default_factory=list)
     original_reasoning: str | None = None  # None if retain=false
     metadata: dict[str, Any] = Field(default_factory=dict)
     certificate_url: str

@@ -42,6 +42,7 @@ async def store_certificate(
         "extraction_prompt_version": certificate.get("extraction_prompt_version", "v1"),
         "argument_graph":           certificate["argument_graph"],
         "failure":                  certificate.get("failure"),
+        "repair_suggestions":       certificate.get("repair_suggestions", []),
         "original_reasoning":       certificate.get("original_reasoning"),  # None if retain=false
         "metadata":                 certificate.get("metadata", {}),
         "sha256":                   certificate["sha256"],
@@ -83,12 +84,14 @@ async def get_certificate(
         "certificate_id":             row["id"],
         "timestamp":                  row["created_at"],
         "verdict":                    row["verdict"],
+        "failure_type":               (row.get("failure") or {}).get("type"),
         "confidence_score":           row["confidence_score"],
         "prova_version":              row["prova_version"],
         "validator_version":          row["validator_version"],
         "extraction_prompt_version":  row.get("extraction_prompt_version", "v1"),
         "argument_graph":             row["argument_graph"],
         "failure":                    row.get("failure"),
+        "repair_suggestions":         row.get("repair_suggestions", []),
         "original_reasoning":         row.get("original_reasoning"),
         "metadata":                   row.get("metadata", {}),
         "certificate_url": (
