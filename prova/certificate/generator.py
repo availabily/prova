@@ -25,23 +25,24 @@ from prova.certificate.versioning import get_versions
 # Certificate ID generation
 # ---------------------------------------------------------------------------
 
-def _generate_certificate_id(sha256: str, year: int) -> str:
+def _generate_certificate_id(sha256: str, issued_at: datetime) -> str:
     """Generate a human-readable certificate ID.
 
-    Format: PRV-YYYY-XXXX
+    Format: PROVA-YYYYMMDD-XXXX
     Where XXXX is the first 4 uppercase hex characters of the SHA-256 hash.
 
-    Examples: PRV-2026-A7X4, PRV-2026-B2M9
+    Examples: PROVA-20260414-A7X4, PROVA-20260414-B2M9
 
     Args:
         sha256: The certificate's SHA-256 hash (hex string).
-        year:   The year of certificate generation.
+        issued_at: UTC issuance timestamp.
 
     Returns:
         Certificate ID string.
     """
     suffix = sha256[:4].upper()
-    return f"PRV-{year}-{suffix}"
+    date_part = issued_at.strftime("%Y%m%d")
+    return f"PROVA-{date_part}-{suffix}"
 
 
 # ---------------------------------------------------------------------------
@@ -123,8 +124,6 @@ def generate_certificate(
     """
     now = datetime.now(UTC)
     timestamp = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-    year = now.year
-
     verdict = analysis_result.verdict
     failure = analysis_result.failure_detail  # None if VALID
     failure_type = analysis_result.failure_type  # None if VALID
@@ -139,13 +138,15 @@ def generate_certificate(
         failure=failure,
     )
 
-    certificate_id = _generate_certificate_id(sha256, year)
+    certificate_id = _generate_certificate_id(sha256, now)
     versions = get_versions()
     base_url = os.environ.get("PROVA_BASE_URL", "https://prova.cobound.dev")
+    verify_url = f"{base_url}/verify/{certificate_id}"
 
     cert: dict[str, Any] = {
         "certificate_id": certificate_id,
         "timestamp": timestamp,
+        "issued_at": timestamp,
         "verdict": verdict,
         "failure_type": failure_type,
         "confidence_score": confidence_score,
@@ -158,6 +159,7 @@ def generate_certificate(
         "original_reasoning": reasoning if retain else None,
         "metadata": metadata or {},
         "certificate_url": f"{base_url}/certificate/{certificate_id}",
+        "verification_url": verify_url,
         "sha256": sha256,
     }
 

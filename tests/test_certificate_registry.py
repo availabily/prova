@@ -93,10 +93,10 @@ class TestGenerateCertificate:
             analysis_result=result,
         )
         cid = cert["certificate_id"]
-        assert cid.startswith("PRV-")
+        assert cid.startswith("PROVA-")
         parts = cid.split("-")
         assert len(parts) == 3
-        assert len(parts[1]) == 4  # year
+        assert len(parts[1]) == 8  # YYYYMMDD
         assert len(parts[2]) == 4  # hash suffix
 
     def test_sha256_present_and_correct_length(self):
