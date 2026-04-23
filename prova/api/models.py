@@ -104,6 +104,7 @@ class CertificateResponse(BaseModel):
     certificate_id: str
     timestamp: str
     verdict: str                           # VALID | INVALID
+    failure_type: str | None = None        # CIRCULAR | CONTRADICTION | UNSUPPORTED_LEAP | None
     confidence_score: int = Field(..., ge=0, le=100)
     prova_version: str
     validator_version: str

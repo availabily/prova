@@ -209,12 +209,17 @@ def get_most_severe(
 
     Args:
         failure_type: One of "CIRCULAR", "CONTRADICTION", "UNSUPPORTED_LEAP".
-        domain:       Optional domain filter (see map_failure).
+        domain:       Optional domain filter (see map_failure). When None,
+                      returns the most severe entry scoped to domain="general"
+                      rather than the most severe across all domains (which
+                      would non-deterministically return a domain-specific
+                      entry unrelated to the caller's context).
 
     Returns:
         The most severe failure consequence dict, or None if not found.
     """
-    failures = map_failure(failure_type, domain)
+    effective_domain = domain if domain is not None else "general"
+    failures = map_failure(failure_type, effective_domain)
     if not failures:
         return None
     return min(failures, key=lambda f: _SEVERITY_RANK.get(f["severity"], 99))

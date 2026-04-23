@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { verify, type Certificate } from '@/lib/api'
 import VerdictBadge from '@/components/VerdictBadge'
 
-const SAMPLE_VALID_ID = 'PRV-2026-58D8'
-const SAMPLE_INVALID_ID = 'PRV-2026-FAIL'
+const SAMPLE_VALID_ID = 'PRV-2026-C588'
+const SAMPLE_INVALID_ID = 'PRV-2026-0635'
 
 export default function HomePage() {
   const [reasoning, setReasoning] = useState('')
@@ -203,17 +203,17 @@ export default function HomePage() {
           <SampleCertCard
             id={SAMPLE_VALID_ID}
             verdict="VALID"
-            label="Loan approval reasoning"
+            label="Mortgage approval reasoning"
             confidence={100}
-            snippet="The applicant has stable income, which means they can make payments. Since they can make payments, the risk is low..."
+            snippet="DTI ratio of 24% falls below the 36% threshold. Credit score of 742 exceeds the 680 minimum. Since both criteria are met, the application qualifies for standard rate conventional financing."
           />
           <SampleCertCard
             id={SAMPLE_INVALID_ID}
             verdict="INVALID"
-            label="Medical diagnosis reasoning"
+            label="Portfolio risk model reasoning"
             confidence={0}
             failureType="CIRCULAR"
-            snippet="This treatment is safe because it passed trials. It passed trials because it is safe..."
+            snippet="Portfolio is low-risk, so we allocate minimal reserves. Minimal reserves mean low loss exposure. Low loss exposure confirms the low-risk rating..."
           />
         </div>
       </section>

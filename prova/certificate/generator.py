@@ -126,6 +126,7 @@ def generate_certificate(
 
     verdict = analysis_result.verdict
     failure = analysis_result.failure_detail  # None if VALID
+    failure_type = analysis_result.failure_type  # None if VALID
 
     # Compute hash (bootstrapped — hash doesn't include itself)
     sha256 = _compute_hash(
@@ -145,6 +146,7 @@ def generate_certificate(
         "certificate_id": certificate_id,
         "timestamp": timestamp,
         "verdict": verdict,
+        "failure_type": failure_type,
         "confidence_score": confidence_score,
         "prova_version": versions["prova"],
         "validator_version": versions["validator"],
