@@ -152,7 +152,7 @@ export default function HomePage() {
                     <span className={`transition-transform duration-200 ${examplesOpen ? 'rotate-180' : ''}`}>▾</span>
                   </button>
                   {examplesOpen && (
-                    <div className="absolute bottom-full right-0 mb-1 w-56 border border-border bg-bg z-10">
+                    <div className="absolute bottom-full right-0 mb-1 w-56 border border-border bg-bg z-50">
                       {EXAMPLES.map((ex) => (
                         <button
                           key={ex.label}
