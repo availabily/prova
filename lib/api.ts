@@ -77,11 +77,12 @@ export async function verify(
   apiKey?: string
 ): Promise<{ data: Certificate | null; error: ApiError | null }> {
   try {
+    const resolvedKey = apiKey ?? process.env.NEXT_PUBLIC_DEMO_API_KEY
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     }
-    if (apiKey) {
-      headers['Authorization'] = `Bearer ${apiKey}`
+    if (resolvedKey) {
+      headers['Authorization'] = `Bearer ${resolvedKey}`
     }
 
     const res = await fetch(`${API_BASE}/verify`, {
