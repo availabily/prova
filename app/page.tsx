@@ -88,6 +88,7 @@ export default function HomePage() {
         </Link>
         <div className="flex items-center gap-6 text-xs mono text-dim">
           <Link href="/docs" className="hover:text-text transition-colors duration-200">docs</Link>
+          <Link href="/docs/certificate-guide" className="hover:text-text transition-colors duration-200">compliance</Link>
           <Link href="/pricing" className="hover:text-text transition-colors duration-200">pricing</Link>
           <a href="https://api.prova.cobound.dev/docs" target="_blank" rel="noopener noreferrer" className="hover:text-text transition-colors duration-200">api</a>
           <Link href="/dashboard" className="border border-border px-3 py-1.5 hover:border-dim transition-colors duration-200">sign in</Link>
@@ -95,7 +96,7 @@ export default function HomePage() {
       </nav>
 
       {/* Hero */}
-      <main className="pt-32 sm:pt-40 pb-16 px-6 sm:px-8 max-w-3xl mx-auto">
+      <main className="pt-32 sm:pt-40 pb-8 px-6 sm:px-8 max-w-3xl mx-auto">
         {/* Status badge */}
         <div className="fade-up mb-8">
           <div className="inline-flex items-center gap-2.5 border border-border px-3.5 py-1.5 rounded-full">
@@ -108,15 +109,14 @@ export default function HomePage() {
         <div className="fade-up delay-100 mb-6">
           <h1 className="font-display text-5xl sm:text-6xl font-bold text-text leading-[1.08] tracking-tight">
             Does your AI<br />
-            <span className="text-dim">reason correctly?</span>
+            <span className="text-valid">reason correctly?</span>
           </h1>
         </div>
 
         {/* Subtitle */}
         <div className="fade-up delay-200 mb-14">
           <p className="text-dim text-lg leading-relaxed max-w-lg">
-            Paste any reasoning chain. Get a formal certificate of logical validity
-            in seconds, or a precise diagnosis of where the reasoning breaks.
+            Prove your AI&apos;s logic is sound. Paste any reasoning chain, get a formal certificate in seconds.
           </p>
         </div>
 
@@ -169,10 +169,10 @@ export default function HomePage() {
                 <button
                   onClick={handleVerify}
                   disabled={!reasoning.trim() || loading}
-                  className={`mono text-xs px-6 py-2.5 border tracking-widest transition-all duration-300 ${
+                  className={`mono text-xs px-6 py-2.5 tracking-widest transition-all duration-300 font-semibold bg-valid text-bg disabled:opacity-20 ${
                     loading
-                      ? 'verify-loading border-valid text-valid'
-                      : 'verify-btn border-border text-text'
+                      ? 'verify-loading'
+                      : 'hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]'
                   }`}
                 >
                   {loading ? 'VERIFYING...' : 'VERIFY'}
@@ -247,9 +247,40 @@ export default function HomePage() {
         <div className="hr-fade mb-12" />
         <div className="grid grid-cols-3 gap-8 mb-12">
           <TrustStat number="2,400+" label="Lean 4 theorems" delay={0} />
-          <TrustStat number="0" label="axioms assumed" delay={100} />
+          <TrustStat number="0" label="axioms assumed" delay={100} title="Every step in the proof chain is verified from first principles. Nothing is assumed." />
           <TrustStat number="100%" label="formally verified" delay={200} />
         </div>
+      </section>
+
+      {/* EU AI Act */}
+      <section className="px-6 sm:px-8 pb-24 max-w-3xl mx-auto">
+        <div className="border border-border p-8 sm:p-10 bg-surface/30">
+          <p className="mono text-xs text-valid tracking-widest uppercase mb-4">EU AI Act</p>
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-text mb-4 leading-tight">
+            August 2026 deadline.<br />
+            <span className="text-dim">Are you ready?</span>
+          </h2>
+          <p className="text-dim text-sm leading-relaxed mb-6 max-w-lg">
+            The EU AI Act requires demonstrable proof that high-risk AI systems reason correctly.
+            Prova generates the formal certificates you need, backed by mathematically verified
+            theorems, not heuristics.
+          </p>
+          <a
+            href="mailto:kian@cobound.dev?subject=Prova%20Enterprise%20Inquiry"
+            className="inline-flex mono text-xs border border-valid/30 text-valid px-5 py-2.5 hover:border-valid hover:bg-valid/5 transition-all duration-200"
+          >
+            talk to us about compliance
+          </a>
+        </div>
+      </section>
+
+      {/* Social proof */}
+      <section className="px-6 sm:px-8 max-w-3xl mx-auto pb-12">
+        <p className="mono text-xs text-muted text-center leading-relaxed">
+          Built for teams verifying AI reasoning in healthcare, financial services, and legal technology.
+          <br />
+          Compliance-ready for EU AI Act, FDA AI guidance, and SEC algorithmic audit requirements.
+        </p>
       </section>
 
       {/* Sample certificates */}
@@ -277,28 +308,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* EU AI Act */}
-      <section className="px-6 sm:px-8 pb-24 max-w-3xl mx-auto">
-        <div className="border border-border p-8 sm:p-10 bg-surface/30">
-          <p className="mono text-xs text-valid tracking-widest uppercase mb-4">EU AI Act</p>
-          <h2 className="font-display text-2xl sm:text-3xl font-bold text-text mb-4 leading-tight">
-            August 2026 deadline.<br />
-            <span className="text-dim">Are you ready?</span>
-          </h2>
-          <p className="text-dim text-sm leading-relaxed mb-6 max-w-lg">
-            The EU AI Act requires demonstrable proof that high-risk AI systems reason correctly.
-            Prova generates the formal certificates you need, backed by mathematically verified
-            theorems, not heuristics.
-          </p>
-          <a
-            href="mailto:kian@cobound.dev?subject=Prova%20Enterprise%20Inquiry"
-            className="inline-flex mono text-xs border border-valid/30 text-valid px-5 py-2.5 hover:border-valid hover:bg-valid/5 transition-all duration-200"
-          >
-            talk to us about compliance
-          </a>
-        </div>
-      </section>
-
       {/* How it works */}
       <section className="px-6 sm:px-8 pb-24 max-w-3xl mx-auto">
         <div className="border-t border-border pt-16 mb-10">
@@ -321,7 +330,7 @@ export default function HomePage() {
               <a href="https://cobound.dev" className="hover:text-dim transition-colors duration-200">cobound.dev</a>
             </div>
             <div className="mono text-xs text-muted/40">
-              H<sup>1</sup>(K;Z) = 0 iff argument is structurally valid
+              <Link href="/docs/certificate-guide" className="hover:text-muted transition-colors duration-200">H<sup>1</sup>(K;Z) = 0</Link> iff argument is structurally valid
             </div>
           </div>
           <div className="flex gap-8 mono text-xs text-muted">
@@ -335,9 +344,9 @@ export default function HomePage() {
   )
 }
 
-function TrustStat({ number, label, delay }: { number: string; label: string; delay: number }) {
+function TrustStat({ number, label, delay, title }: { number: string; label: string; delay: number; title?: string }) {
   return (
-    <div className="text-center stat-animate" style={{ animationDelay: `${delay}ms` }}>
+    <div className="text-center stat-animate" style={{ animationDelay: `${delay}ms` }} title={title}>
       <div className="font-display text-2xl sm:text-3xl font-bold text-text">{number}</div>
       <div className="mono text-xs text-muted mt-1">{label}</div>
     </div>
@@ -380,7 +389,7 @@ function SampleCertCard({ id, verdict, label, confidence, failureType, snippet }
 function HowStep({ number, title, description }: { number: string; title: string; description: string }) {
   return (
     <div className="flex gap-6 items-start">
-      <div className="mono text-xs text-muted/30 pt-1 shrink-0 w-6">{number}</div>
+      <div className="mono text-xs text-valid/40 pt-1 shrink-0 w-6">{number}</div>
       <div>
         <h3 className="font-display text-lg font-semibold text-text mb-2">{title}</h3>
         <p className="text-dim text-sm leading-relaxed">{description}</p>

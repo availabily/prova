@@ -24,6 +24,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${data.certificate_id} · ${data.verdict} — Prova`,
     description: `Prova reasoning certificate. Verdict: ${data.verdict}. Confidence: ${data.confidence_score}/100.`,
+    openGraph: {
+      title: `${data.certificate_id} - ${data.verdict} - Prova Certificate`,
+      description: `AI reasoning certificate. Verdict: ${data.verdict}. Confidence: ${data.confidence_score}/100. Verified by 2,400+ Lean 4 theorems.`,
+      type: 'article',
+    },
   }
 }
 
