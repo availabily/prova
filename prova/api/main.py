@@ -16,7 +16,7 @@ from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from supabase import Client, create_client
 
 from prova.analysis.analyzer import analyze
@@ -36,6 +36,7 @@ from prova.certificate.versioning import PROVA_VERSION, get_validator_version
 from prova.extraction.extractor import ExtractionError, extract_argument_graph
 from prova.extraction.validator import validate_extraction
 from prova.storage.client import store_certificate, get_certificate, log_usage
+from prova.storage.pdf import generate_pdf
 
 # ---------------------------------------------------------------------------
 # Sentry — optional, initialised only if SENTRY_DSN is set
@@ -242,6 +243,45 @@ async def get_certificate_by_id(
     if not cert:
         raise certificate_not_found(certificate_id)
     return CertificateResponse(**cert)
+
+
+# ---------------------------------------------------------------------------
+# Download certificate as PDF
+# ---------------------------------------------------------------------------
+
+@app.get(
+    "/certificate/{certificate_id}/pdf",
+    responses={
+        200: {"content": {"application/pdf": {}}, "description": "PDF certificate"},
+        404: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+    tags=["certificates"],
+)
+async def get_certificate_pdf(
+    certificate_id: str,
+    request: Request,
+) -> Response:
+    """Generate and return a PDF certificate by ID."""
+    supabase = _get_supabase()
+    cert = await get_certificate(supabase=supabase, certificate_id=certificate_id)
+    if not cert:
+        raise certificate_not_found(certificate_id)
+
+    try:
+        pdf_bytes = generate_pdf(cert)
+    except Exception as exc:
+        _capture(exc)
+        raise internal_error(str(exc)) from exc
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="prova-{certificate_id}.pdf"',
+            "Cache-Control": "public, max-age=31536000, immutable",
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
