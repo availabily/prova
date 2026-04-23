@@ -1,9 +1,28 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { verify, type Certificate } from '@/lib/api'
 import VerdictBadge from '@/components/VerdictBadge'
+
+const EXAMPLES: { label: string; chain: string }[] = [
+  {
+    label: 'Loan approval',
+    chain: 'Step 1: The applicant reports annual gross income of $92,000, verified against two years of tax returns. Step 2: With a monthly gross income of $7,667, the proposed mortgage payment of $1,840 represents a debt-to-income ratio of 24%. Step 3: A DTI ratio of 24% falls below our 36% threshold for conventional loan approval. Step 4: The applicant\'s credit score of 742 exceeds the minimum requirement of 680. Step 5: Since both DTI and credit score meet approval criteria, this application qualifies for standard rate conventional financing.',
+  },
+  {
+    label: 'Medical triage',
+    chain: 'Step 1: Patient presents with sudden onset right lower quadrant abdominal pain beginning 8 hours ago. Step 2: Physical examination reveals rebound tenderness and guarding localized to McBurney\'s point. Step 3: Complete blood count shows white blood cell count of 14,200 with left shift. Step 4: The combination of RLQ pain at McBurney\'s point, rebound tenderness, and elevated WBC with left shift meets the Alvarado score threshold of 7 or higher. Step 5: An Alvarado score of 7 or higher indicates high probability of acute appendicitis requiring surgical consultation. Step 6: Therefore, order CT abdomen with contrast and page the on-call surgical team for evaluation.',
+  },
+  {
+    label: 'Circular risk model (invalid)',
+    chain: 'Step 1: Our risk model assigns this portfolio a low-risk rating. Step 2: Because the portfolio is rated low-risk, we allocate minimal capital reserves against it. Step 3: With minimal capital reserves allocated, the portfolio\'s loss exposure is low. Step 4: Low loss exposure confirms that our risk model correctly assigned a low-risk rating. Step 5: Therefore, we recommend maintaining current positions without hedging.',
+  },
+  {
+    label: 'Unsupported diagnosis (invalid)',
+    chain: 'Step 1: The patient reports occasional mild headaches occurring two to three times per month. Step 2: Therefore, the patient should be scheduled for an urgent MRI to rule out glioblastoma.',
+  },
+]
 
 const SAMPLE_VALID_ID = 'PRV-2026-C588'
 const SAMPLE_INVALID_ID = 'PRV-2026-1019'
@@ -14,9 +33,22 @@ export default function HomePage() {
   const [result, setResult] = useState<Certificate | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [elapsed, setElapsed] = useState<number | null>(null)
+  const [examplesOpen, setExamplesOpen] = useState(false)
   const resultRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startRef = useRef<number>(0)
+  const examplesRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!examplesOpen) return
+    function handleClickOutside(e: MouseEvent) {
+      if (examplesRef.current && !examplesRef.current.contains(e.target as Node)) {
+        setExamplesOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [examplesOpen])
 
   async function handleVerify() {
     if (!reasoning.trim() || loading) return
@@ -108,17 +140,44 @@ export default function HomePage() {
                     ? `${reasoning.length} chars`
                     : ''}
               </span>
-              <button
-                onClick={handleVerify}
-                disabled={!reasoning.trim() || loading}
-                className={`mono text-xs px-6 py-2.5 border tracking-widest transition-all duration-300 ${
-                  loading
-                    ? 'verify-loading border-valid text-valid'
-                    : 'verify-btn border-border text-text'
-                }`}
-              >
-                {loading ? 'VERIFYING...' : 'VERIFY'}
-              </button>
+              <div className="flex items-center gap-3">
+                {/* Examples dropdown */}
+                <div ref={examplesRef} className="relative">
+                  <button
+                    onClick={() => setExamplesOpen(o => !o)}
+                    disabled={loading}
+                    className="mono text-xs px-4 py-2.5 border border-border text-muted hover:text-text hover:border-muted transition-all duration-200 flex items-center gap-2 disabled:opacity-40"
+                  >
+                    try an example
+                    <span className={`transition-transform duration-200 ${examplesOpen ? 'rotate-180' : ''}`}>▾</span>
+                  </button>
+                  {examplesOpen && (
+                    <div className="absolute bottom-full right-0 mb-1 w-56 border border-border bg-bg z-10">
+                      {EXAMPLES.map((ex) => (
+                        <button
+                          key={ex.label}
+                          onClick={() => { setReasoning(ex.chain); setExamplesOpen(false) }}
+                          className="w-full text-left mono text-xs px-4 py-2.5 text-dim hover:text-text hover:bg-surface/60 transition-colors duration-150 border-b border-border last:border-b-0"
+                        >
+                          {ex.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Verify button */}
+                <button
+                  onClick={handleVerify}
+                  disabled={!reasoning.trim() || loading}
+                  className={`mono text-xs px-6 py-2.5 border tracking-widest transition-all duration-300 ${
+                    loading
+                      ? 'verify-loading border-valid text-valid'
+                      : 'verify-btn border-border text-text'
+                  }`}
+                >
+                  {loading ? 'VERIFYING...' : 'VERIFY'}
+                </button>
+              </div>
             </div>
           </div>
 
