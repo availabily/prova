@@ -6,7 +6,7 @@ import { verify, type Certificate } from '@/lib/api'
 import VerdictBadge from '@/components/VerdictBadge'
 
 const SAMPLE_VALID_ID = 'PRV-2026-C588'
-const SAMPLE_INVALID_ID = 'PRV-2026-0635'
+const SAMPLE_INVALID_ID = 'PRV-2026-1019'
 
 export default function HomePage() {
   const [reasoning, setReasoning] = useState('')
